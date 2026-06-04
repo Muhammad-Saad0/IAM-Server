@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: iam-server-postgres
+    environment:
+      POSTGRES_DB: iam_server
+      POSTGRES_USER: iam_dev
+      POSTGRES_PASSWORD: iam_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - iam_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iam_dev -d iam_server"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  iam_postgres_data:
