@@ -1,6 +1,7 @@
 package com.example.iam.account.adapter.out.persistence;
 
 import com.example.iam.account.application.port.out.UserRolePersistencePort;
+import com.example.iam.account.domain.model.UserRole;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -17,5 +18,10 @@ public class JpaUserRolePersistenceAdapter implements UserRolePersistencePort {
     @Override
     public List<String> findRoleNamesByUserId(UUID userId) {
         return repository.findRoleNamesByUserId(userId);
+    }
+
+    @Override
+    public UserRole save(UserRole userRole) {
+        return repository.save(userRole);
     }
 }

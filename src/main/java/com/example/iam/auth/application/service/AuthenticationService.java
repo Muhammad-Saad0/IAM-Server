@@ -18,18 +18,18 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class LoginService {
+public class AuthenticationService {
     private final UserPersistencePort userPersistencePort;
     private final UserRolePersistencePort userRolePersistencePort;
+    private final AuthEventPersistencePort authEventPersistencePort;
     private final PasswordVerifier passwordVerifier;
     private final JwtTokenIssuer jwtTokenIssuer;
     private final RefreshTokenService refreshTokenService;
-    private final AuthEventPersistencePort authEventPersistencePort;
     private final Clock clock;
 
     // Use cases
     @Transactional
-    public LoginResult login(String email, String password, String userAgent) {
+    public AuthenticationResult login(String email, String password, String userAgent) {
         Instant now = clock.instant();
         User user = userPersistencePort.findByEmail(email)
                 .orElseThrow(() -> invalidLogin(email, userAgent, now));
@@ -48,7 +48,35 @@ public class LoginService {
 
         authEventPersistencePort.save(AuthEvent.loginSuccess(user, userAgent, now));
 
-        return new LoginResult(accessToken.token(), accessToken.expiresAt(), refreshToken.token(), refreshToken.expiresAt());
+        return new AuthenticationResult(accessToken.token(), accessToken.expiresAt(), refreshToken.token(), refreshToken.expiresAt());
+    }
+
+    @Transactional
+    public AuthenticationResult refreshAccessToken(String rawRefreshToken, String userAgent) {
+        RefreshTokenService.RotatedRefreshToken rotatedRefreshToken = refreshTokenService.rotateRefreshToken(
+                rawRefreshToken,
+                userAgent
+        );
+
+        List<String> roleNames = userRolePersistencePort.findRoleNamesByUserId(rotatedRefreshToken.user().getId());
+        JwtTokenIssuer.IssuedAccessToken accessToken = jwtTokenIssuer.issueAccessToken(
+                rotatedRefreshToken.user().getId(),
+                rotatedRefreshToken.user().getEmail(),
+                roleNames
+        );
+
+        return new AuthenticationResult(
+                accessToken.token(),
+                accessToken.expiresAt(),
+                rotatedRefreshToken.token(),
+                rotatedRefreshToken.expiresAt()
+        );
+    }
+
+    @Transactional
+    public void logout(String rawRefreshToken) {
+        refreshTokenService.revokeRefreshTokenFamily(rawRefreshToken);
+        // TODO: Record a LOGOUT auth event once logout can resolve the user from the refresh token.
     }
 
     // Helpers
@@ -58,7 +86,7 @@ public class LoginService {
     }
 
     // Results
-    public record LoginResult(
+    public record AuthenticationResult(
             String accessToken,
             Instant accessTokenExpiresAt,
             String refreshToken,

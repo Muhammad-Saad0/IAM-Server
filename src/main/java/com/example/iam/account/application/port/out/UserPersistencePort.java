@@ -6,4 +6,6 @@ import java.util.Optional;
 
 public interface UserPersistencePort {
     Optional<User> findByEmail(String email);
+
+    User save(User user);
 }

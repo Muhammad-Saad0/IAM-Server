@@ -18,4 +18,9 @@ public class JpaUserPersistenceAdapter implements UserPersistencePort {
     public Optional<User> findByEmail(String email) {
         return repository.findByEmail(email);
     }
+
+    @Override
+    public User save(User user) {
+        return repository.save(user);
+    }
 }
