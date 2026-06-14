@@ -1,5 +1,6 @@
 package com.example.iam.auth.adapter.security;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -24,7 +25,7 @@ public class JwtTokenIssuer {
     private final Clock clock;
 
     public JwtTokenIssuer(
-            JwtEncoder jwtEncoder,
+            @Qualifier("adminJwtEncoder") JwtEncoder jwtEncoder,
             @Value("${app.security.jwt.access-token-ttl}") Duration accessTokenTtl,
             Clock clock
     ) {

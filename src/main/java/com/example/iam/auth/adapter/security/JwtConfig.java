@@ -16,7 +16,7 @@ import java.nio.charset.StandardCharsets;
 
 @Configuration
 public class JwtConfig {
-    @Bean
+    @Bean("adminJwtDecoder")
     public JwtDecoder jwtDecoder(@Value("${app.security.jwt.secret}") String jwtSecret) {
         SecretKeySpec secretKey = new SecretKeySpec(
                 jwtSecret.getBytes(StandardCharsets.UTF_8),
@@ -29,7 +29,7 @@ public class JwtConfig {
                 .build();
     }
 
-    @Bean
+    @Bean("adminJwtEncoder")
     public JwtEncoder jwtEncoder(@Value("${app.security.jwt.secret}") String jwtSecret) {
         SecretKeySpec secretKey = new SecretKeySpec(
                 jwtSecret.getBytes(StandardCharsets.UTF_8),
