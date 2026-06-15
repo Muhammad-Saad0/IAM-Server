@@ -1,14 +1,17 @@
 package com.example.iam.auth.adapter.security;
 
-import org.springframework.beans.factory.annotation.Qualifier;
+import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.stereotype.Component;
 
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -25,11 +28,16 @@ public class JwtTokenIssuer {
     private final Clock clock;
 
     public JwtTokenIssuer(
-            @Qualifier("adminJwtEncoder") JwtEncoder jwtEncoder,
+            @Value("${app.security.jwt.secret}") String jwtSecret,
             @Value("${app.security.jwt.access-token-ttl}") Duration accessTokenTtl,
             Clock clock
     ) {
-        this.jwtEncoder = jwtEncoder;
+        SecretKeySpec secretKey = new SecretKeySpec(
+                jwtSecret.getBytes(StandardCharsets.UTF_8),
+                "HmacSHA256"
+        );
+
+        this.jwtEncoder = new NimbusJwtEncoder(new ImmutableSecret<>(secretKey));
         this.accessTokenTtl = accessTokenTtl;
         this.clock = clock;
     }
