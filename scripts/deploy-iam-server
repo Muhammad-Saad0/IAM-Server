@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+: "${REPO_URL:=https://github.com/Muhammad-Saad0/IAM-Server.git}"
+: "${BRANCH:=main}"
+: "${DEPLOY_PATH:=/opt/iam-server}"
+: "${OAUTH2_ISSUER_B64:?Missing OAUTH2_ISSUER_B64}"
+: "${OAUTH2_JWK_PRIVATE_KEY_B64:?Missing OAUTH2_JWK_PRIVATE_KEY_B64}"
+: "${OAUTH2_JWK_PUBLIC_KEY_B64:?Missing OAUTH2_JWK_PUBLIC_KEY_B64}"
+: "${JWT_SECRET_B64:?Missing JWT_SECRET_B64}"
+
+decode_secret() {
+    printf '%s' "$1" | base64 --decode
+}
+
+if [[ "$(id -u)" -eq 0 ]]; then
+    SUDO=()
+else
+    SUDO=(sudo)
+fi
+
+require_command() {
+    if ! command -v "$1" >/dev/null 2>&1; then
+        echo "Missing required command on VM: $1" >&2
+        exit 1
+    fi
+}
+
+require_command base64
+require_command docker
+require_command git
+
+"${SUDO[@]}" mkdir -p "$DEPLOY_PATH"
+"${SUDO[@]}" chown "$(id -un):$(id -gn)" "$DEPLOY_PATH"
+
+if [[ -d "$DEPLOY_PATH/.git" ]]; then
+    git -C "$DEPLOY_PATH" fetch origin "$BRANCH"
+elif [[ -z "$(find "$DEPLOY_PATH" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+    git clone --branch "$BRANCH" "$REPO_URL" "$DEPLOY_PATH"
+else
+    echo "$DEPLOY_PATH exists but is not an empty directory or a git checkout" >&2
+    exit 1
+fi
+
+git -C "$DEPLOY_PATH" reset --hard "origin/$BRANCH"
+
+install -d -m 700 "$DEPLOY_PATH/secrets"
+decode_secret "$OAUTH2_JWK_PRIVATE_KEY_B64" > "$DEPLOY_PATH/secrets/iam-oauth-private.pem"
+decode_secret "$OAUTH2_JWK_PUBLIC_KEY_B64" > "$DEPLOY_PATH/secrets/iam-oauth-public.pem"
+chmod 600 "$DEPLOY_PATH/secrets/iam-oauth-private.pem"
+chmod 644 "$DEPLOY_PATH/secrets/iam-oauth-public.pem"
+
+{
+    printf 'OAUTH2_ISSUER=%q\n' "$(decode_secret "$OAUTH2_ISSUER_B64")"
+    printf 'JWT_SECRET=%q\n' "$(decode_secret "$JWT_SECRET_B64")"
+} > "$DEPLOY_PATH/.env"
+chmod 600 "$DEPLOY_PATH/.env"
+
+docker compose -f "$DEPLOY_PATH/compose.yaml" --env-file "$DEPLOY_PATH/.env" up -d --build

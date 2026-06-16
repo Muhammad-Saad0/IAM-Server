@@ -16,7 +16,10 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.UUID;
@@ -31,15 +34,17 @@ public class OAuth2JwkConfig {
     @Bean
     JWKSource<SecurityContext> jwkSource(
             @Value("${app.oauth2.jwk.private-key}") String privateKeyPem,
-            @Value("${app.oauth2.jwk.public-key}") String publicKeyPem
+            @Value("${app.oauth2.jwk.private-key-path}") String privateKeyPath,
+            @Value("${app.oauth2.jwk.public-key}") String publicKeyPem,
+            @Value("${app.oauth2.jwk.public-key-path}") String publicKeyPath
     ) {
         RSAPrivateKey privateKey = parsePrivateKey(requiredPem(
-                privateKeyPem,
-                "app.oauth2.jwk.private-key must be configured with a PKCS#8 PEM private key"
+                keyMaterial(privateKeyPem, privateKeyPath),
+                "app.oauth2.jwk.private-key or app.oauth2.jwk.private-key-path must be configured with a PKCS#8 PEM private key"
         ));
         RSAPublicKey publicKey = parsePublicKey(requiredPem(
-                publicKeyPem,
-                "app.oauth2.jwk.public-key must be configured with an X.509 PEM public key"
+                keyMaterial(publicKeyPem, publicKeyPath),
+                "app.oauth2.jwk.public-key or app.oauth2.jwk.public-key-path must be configured with an X.509 PEM public key"
         ));
 
         RSAKey rsaKey = new RSAKey.Builder(publicKey)
@@ -67,6 +72,22 @@ public class OAuth2JwkConfig {
         }
 
         return pem;
+    }
+
+    private String keyMaterial(String pem, String path) {
+        if (pem != null && !pem.isBlank()) {
+            return pem;
+        }
+
+        if (path == null || path.isBlank()) {
+            return "";
+        }
+
+        try {
+            return Files.readString(Path.of(path), StandardCharsets.UTF_8);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Unable to read RSA key from " + path, exception);
+        }
     }
 
     private RSAPrivateKey parsePrivateKey(String pem) {
