@@ -40,9 +40,16 @@ services:
     secrets:
       - oauth_private_key
       - oauth_public_key
+    networks:
+      - default
+      - proxy
 
 volumes:
   iam_postgres_data:
+
+networks:
+  proxy:
+    external: true
 
 secrets:
   oauth_private_key:
