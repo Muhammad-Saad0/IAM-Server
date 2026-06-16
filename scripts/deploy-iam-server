@@ -39,6 +39,19 @@ compose() {
     fi
 }
 
+remove_stale_api_containers() {
+    local api_containers=()
+
+    mapfile -t api_containers < <(
+        docker ps -a --format '{{.ID}} {{.Names}}' |
+            awk '$2 == "iam-server" || $2 ~ /^[[:xdigit:]]+_iam-server$/ { print $1 }'
+    )
+
+    if ((${#api_containers[@]})); then
+        docker rm -f "${api_containers[@]}"
+    fi
+}
+
 "${SUDO[@]}" mkdir -p "$DEPLOY_PATH"
 "${SUDO[@]}" chown "$(id -un):$(id -gn)" "$DEPLOY_PATH"
 
@@ -65,4 +78,7 @@ chmod 644 "$DEPLOY_PATH/secrets/iam-oauth-public.pem"
 } > "$DEPLOY_PATH/.env"
 chmod 600 "$DEPLOY_PATH/.env"
 
-compose -f "$DEPLOY_PATH/compose.yaml" --env-file "$DEPLOY_PATH/.env" up -d --build
+COMPOSE_ARGS=(-f "$DEPLOY_PATH/compose.yaml" --env-file "$DEPLOY_PATH/.env")
+compose "${COMPOSE_ARGS[@]}" build api
+remove_stale_api_containers
+compose "${COMPOSE_ARGS[@]}" up -d --no-build
