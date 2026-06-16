@@ -30,6 +30,17 @@ require_command base64
 require_command docker
 require_command git
 
+compose() {
+    if docker compose version >/dev/null 2>&1; then
+        docker compose "$@"
+    elif command -v docker-compose >/dev/null 2>&1; then
+        docker-compose "$@"
+    else
+        echo "Missing Docker Compose. Install docker-compose-plugin or docker-compose on the VM." >&2
+        exit 1
+    fi
+}
+
 "${SUDO[@]}" mkdir -p "$DEPLOY_PATH"
 "${SUDO[@]}" chown "$(id -un):$(id -gn)" "$DEPLOY_PATH"
 
@@ -56,4 +67,4 @@ chmod 644 "$DEPLOY_PATH/secrets/iam-oauth-public.pem"
 } > "$DEPLOY_PATH/.env"
 chmod 600 "$DEPLOY_PATH/.env"
 
-docker compose -f "$DEPLOY_PATH/compose.yaml" --env-file "$DEPLOY_PATH/.env" up -d --build
+compose -f "$DEPLOY_PATH/compose.yaml" --env-file "$DEPLOY_PATH/.env" up -d --build
