@@ -1,0 +1,82 @@
+name: Deploy to VM
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  REPO_URL: https://github.com/Muhammad-Saad0/IAM-Server.git
+  BRANCH: main
+  DEPLOY_PATH: /opt/iam-server
+  SSH_PORT: ${{ secrets.VM_PORT || '22' }}
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate secrets
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          OAUTH2_ISSUER: ${{ secrets.OAUTH2_ISSUER }}
+          OAUTH2_JWK_PRIVATE_KEY: ${{ secrets.OAUTH2_JWK_PRIVATE_KEY }}
+          OAUTH2_JWK_PUBLIC_KEY: ${{ secrets.OAUTH2_JWK_PUBLIC_KEY }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          set -euo pipefail
+
+          : "${VM_HOST:?Missing VM_HOST secret}"
+          : "${VM_USER:?Missing VM_USER secret}"
+          : "${VM_SSH_KEY:?Missing VM_SSH_KEY secret}"
+          : "${OAUTH2_ISSUER:?Missing OAUTH2_ISSUER secret}"
+          : "${OAUTH2_JWK_PRIVATE_KEY:?Missing OAUTH2_JWK_PRIVATE_KEY secret}"
+          : "${OAUTH2_JWK_PUBLIC_KEY:?Missing OAUTH2_JWK_PUBLIC_KEY secret}"
+          : "${JWT_SECRET:?Missing JWT_SECRET secret}"
+
+      - name: Configure SSH
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+        run: |
+          set -euo pipefail
+
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VM_SSH_KEY" > ~/.ssh/iam-server-deploy
+          chmod 600 ~/.ssh/iam-server-deploy
+          ssh-keyscan -p "$SSH_PORT" "$VM_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          OAUTH2_ISSUER: ${{ secrets.OAUTH2_ISSUER }}
+          OAUTH2_JWK_PRIVATE_KEY: ${{ secrets.OAUTH2_JWK_PRIVATE_KEY }}
+          OAUTH2_JWK_PUBLIC_KEY: ${{ secrets.OAUTH2_JWK_PUBLIC_KEY }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          set -euo pipefail
+
+          OAUTH2_ISSUER_B64="$(printf '%s' "$OAUTH2_ISSUER" | base64 -w 0)"
+          OAUTH2_JWK_PRIVATE_KEY_B64="$(printf '%s' "$OAUTH2_JWK_PRIVATE_KEY" | base64 -w 0)"
+          OAUTH2_JWK_PUBLIC_KEY_B64="$(printf '%s' "$OAUTH2_JWK_PUBLIC_KEY" | base64 -w 0)"
+          JWT_SECRET_B64="$(printf '%s' "$JWT_SECRET" | base64 -w 0)"
+
+          ssh -i ~/.ssh/iam-server-deploy -p "$SSH_PORT" "$VM_USER@$VM_HOST" \
+            "REPO_URL='$REPO_URL' BRANCH='$BRANCH' DEPLOY_PATH='$DEPLOY_PATH' \
+             OAUTH2_ISSUER_B64='$OAUTH2_ISSUER_B64' \
+             OAUTH2_JWK_PRIVATE_KEY_B64='$OAUTH2_JWK_PRIVATE_KEY_B64' \
+             OAUTH2_JWK_PUBLIC_KEY_B64='$OAUTH2_JWK_PUBLIC_KEY_B64' \
+             JWT_SECRET_B64='$JWT_SECRET_B64' \
+             bash -s" < scripts/deploy-iam-server

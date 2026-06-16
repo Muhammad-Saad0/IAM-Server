@@ -17,5 +17,35 @@ services:
       retries: 5
       start_period: 10s
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: iam-server:latest
+    container_name: iam-server
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/iam_server
+      SPRING_DATASOURCE_USERNAME: iam_dev
+      SPRING_DATASOURCE_PASSWORD: iam_dev
+      OAUTH2_ISSUER: ${OAUTH2_ISSUER:-http://localhost:8080}
+      OAUTH2_JWK_PRIVATE_KEY_PATH: /run/secrets/oauth_private_key
+      OAUTH2_JWK_PUBLIC_KEY_PATH: /run/secrets/oauth_public_key
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-this-secret-dev-only-change-this-secret}
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    secrets:
+      - oauth_private_key
+      - oauth_public_key
+
 volumes:
   iam_postgres_data:
+
+secrets:
+  oauth_private_key:
+    file: ${OAUTH2_JWK_PRIVATE_KEY_FILE:-./secrets/iam-oauth-private.pem}
+  oauth_public_key:
+    file: ${OAUTH2_JWK_PUBLIC_KEY_FILE:-./secrets/iam-oauth-public.pem}

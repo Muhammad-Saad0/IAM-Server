@@ -168,6 +168,26 @@ token provider clients
 email provider clients
 ```
 
+## Lombok and JPA Entities
+
+Use Lombok to reduce safe boilerplate in JPA entities.
+
+Preferred:
+
+```java
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+```
+
+Do not use Lombok `@Data` on entities. It generates broad setters plus `equals`, `hashCode`, and `toString`, which are risky around mutable JPA state and lazy relationships.
+
+Keep domain behavior explicit:
+
+```java
+user.lock(now);
+user.disable(now);
+```
+
 ## Ports
 
 Inbound ports describe what the application can do.
