@@ -49,9 +49,9 @@ public class SecurityConfig {
     @Order(2)
     public SecurityFilterChain loginSecurityFilterChain(HttpSecurity http) throws Exception {
         return http
-                .securityMatcher("/login", "/error")
+                .securityMatcher("/login", "/error", "/login-assets/**", "/docs", "/docs-assets/**")
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-                .formLogin(Customizer.withDefaults())
+                .formLogin(form -> form.loginPage("/login"))
                 .build();
     }
 

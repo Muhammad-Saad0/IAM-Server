@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>IAM Server Login</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="/login-assets/css/main.css" th:href="@{/login-assets/css/main.css}">
+</head>
+<body>
+    <main class="auth-page">
+        <section class="auth-shell" aria-label="Sign in">
+            <aside class="auth-context" aria-hidden="true">
+                <div class="brand-lock">
+                    <span class="brand-lock-mark">IAM</span>
+                </div>
+                <div>
+                    <p class="eyebrow">Authorization Server</p>
+                    <h1>Secure access for trusted applications.</h1>
+                    <p class="context-copy">
+                        Continue with your organization account to complete the OAuth2 authorization request.
+                    </p>
+                </div>
+                <dl class="trust-list">
+                    <div>
+                        <dt>Protocol</dt>
+                        <dd>OAuth2 / OIDC</dd>
+                    </div>
+                    <div>
+                        <dt>Session</dt>
+                        <dd>Protected by Spring Security</dd>
+                    </div>
+                    <div>
+                        <dt>Token</dt>
+                        <dd>CSRF verified form submit</dd>
+                    </div>
+                </dl>
+            </aside>
+
+            <form class="auth-form" method="post" action="/login" th:action="@{/login}">
+                <div class="form-heading">
+                    <div class="mobile-brand" aria-hidden="true">IAM</div>
+                    <p class="eyebrow">Sign in</p>
+                    <h2>Welcome back</h2>
+                    <p>Use your IAM account credentials.</p>
+                </div>
+
+                <div class="login-alert login-alert-error" role="alert" th:if="${loginError}">
+                    Invalid email or password.
+                </div>
+                <div class="login-alert login-alert-success" role="status" th:if="${logoutSuccess}">
+                    You have been signed out.
+                </div>
+
+                <label class="field-group" for="username">
+                    <span>Email address</span>
+                    <input id="username" type="email" name="username" autocomplete="username" required autofocus>
+                </label>
+
+                <label class="field-group" for="password">
+                    <span>Password</span>
+                    <input id="password" type="password" name="password" autocomplete="current-password" required>
+                </label>
+
+                <input type="hidden" th:if="${csrfParameterName != null and csrfToken != null}" th:name="${csrfParameterName}" th:value="${csrfToken}">
+
+                <button class="primary-action" type="submit">Continue</button>
+            </form>
+        </section>
+    </main>
+</body>
+</html>

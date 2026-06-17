@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>IAM Server Docs</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="/docs-assets/css/docs.css" th:href="@{/docs-assets/css/docs.css}">
+</head>
+<body>
+    <header class="docs-header">
+        <nav class="topbar" aria-label="Documentation">
+            <a class="brand" href="/docs" th:href="@{/docs}">IAM Server</a>
+            <div class="nav-links">
+                <a href="#quickstart">Quickstart</a>
+                <a href="#oidc">OIDC</a>
+                <a href="#api">API JWT</a>
+                <a href="/login" th:href="@{/login}">Login</a>
+            </div>
+        </nav>
+
+        <section class="hero">
+            <p class="eyebrow">Developer Documentation</p>
+            <h1>Use IAM Server as an OAuth2 and OpenID Connect provider.</h1>
+            <p>
+                IAM Server issues OAuth2/OIDC tokens through Spring Authorization Server and also exposes
+                a separate JSON login API for first-party admin endpoints.
+            </p>
+            <div class="hero-actions">
+                <a class="primary-link" href="#quickstart">Start authorization code flow</a>
+                <a class="secondary-link" href="#endpoints">View endpoints</a>
+            </div>
+        </section>
+    </header>
+
+    <main class="docs-layout">
+        <aside class="toc" aria-label="On this page">
+            <a href="#overview">Overview</a>
+            <a href="#configuration">Configuration</a>
+            <a href="#endpoints">Endpoints</a>
+            <a href="#quickstart">Authorization Code + PKCE</a>
+            <a href="#tokens">Token Usage</a>
+            <a href="#api">JSON API Login</a>
+            <a href="#errors">Errors</a>
+            <a href="#local-dev">Local Development</a>
+        </aside>
+
+        <div class="docs-content">
+            <section id="overview" class="doc-section">
+                <p class="eyebrow">Overview</p>
+                <h2>Two authentication surfaces</h2>
+                <div class="cards two-col">
+                    <article class="info-card">
+                        <h3>OAuth2 / OIDC browser flow</h3>
+                        <p>
+                            Use this for browser or SPA applications that need standard OAuth2 authorization code
+                            flow with PKCE and OpenID Connect identity tokens.
+                        </p>
+                        <ul>
+                            <li>Authorization endpoint redirects unauthenticated users to <code>/login</code>.</li>
+                            <li>Login establishes a Spring Security web session.</li>
+                            <li>The saved authorization request resumes after successful login.</li>
+                        </ul>
+                    </article>
+                    <article class="info-card">
+                        <h3>JSON JWT API</h3>
+                        <p>
+                            Use this for the server's own REST endpoints under <code>/auth</code>. It is not the same
+                            as the OIDC authorization-code flow.
+                        </p>
+                        <ul>
+                            <li><code>POST /auth/login</code> returns an API access token.</li>
+                            <li>The refresh token is stored as an HTTP-only cookie scoped to <code>/auth</code>.</li>
+                            <li>Protected API requests use <code>Authorization: Bearer ...</code>.</li>
+                        </ul>
+                    </article>
+                </div>
+            </section>
+
+            <section id="configuration" class="doc-section">
+                <p class="eyebrow">Configuration</p>
+                <h2>Current development settings</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Setting</th>
+                                <th>Value</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Issuer</td>
+                                <td><code>http://localhost:8080</code></td>
+                                <td>Configured by <code>app.oauth2.issuer</code> / <code>OAUTH2_ISSUER</code>.</td>
+                            </tr>
+                            <tr>
+                                <td>Client ID</td>
+                                <td><code>admin-ui</code></td>
+                                <td>Seeded automatically on startup if it does not already exist.</td>
+                            </tr>
+                            <tr>
+                                <td>Client type</td>
+                                <td>Public client</td>
+                                <td>No <code>client_secret</code>. PKCE is required.</td>
+                            </tr>
+                            <tr>
+                                <td>Redirect URI</td>
+                                <td><code>http://localhost:3000/oauth/callback</code></td>
+                                <td>Authorization codes are only sent to registered redirect URIs.</td>
+                            </tr>
+                            <tr>
+                                <td>Scopes</td>
+                                <td><code>openid profile email</code></td>
+                                <td>Consent is disabled for the seeded client.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="endpoints" class="doc-section">
+                <p class="eyebrow">Endpoint Reference</p>
+                <h2>OAuth2 and OIDC endpoints</h2>
+                <div class="endpoint-list">
+                    <div><code>GET /.well-known/openid-configuration</code><span>OIDC discovery metadata.</span></div>
+                    <div><code>GET /.well-known/oauth-authorization-server</code><span>OAuth2 authorization server metadata.</span></div>
+                    <div><code>GET /oauth2/authorize</code><span>Starts authorization code flow.</span></div>
+                    <div><code>POST /oauth2/token</code><span>Exchanges authorization codes for tokens.</span></div>
+                    <div><code>GET /oauth2/jwks</code><span>Public RSA JSON Web Key Set for token validation.</span></div>
+                    <div><code>GET /userinfo</code><span>OIDC UserInfo endpoint for access tokens with OIDC scopes.</span></div>
+                    <div><code>POST /oauth2/revoke</code><span>Token revocation for clients configured to use it.</span></div>
+                    <div><code>POST /oauth2/introspect</code><span>Token introspection for clients configured to use it.</span></div>
+                    <div><code>GET /connect/logout</code><span>OIDC RP-initiated logout endpoint.</span></div>
+                </div>
+            </section>
+
+            <section id="quickstart" class="doc-section">
+                <p class="eyebrow">Quickstart</p>
+                <h2>Authorization Code + PKCE</h2>
+                <p>
+                    This is the standard browser flow for <code>admin-ui</code>. The app generates a PKCE verifier,
+                    sends the user to the authorization endpoint, receives a code on the callback URL, then exchanges
+                    that code for tokens.
+                </p>
+
+                <h3>1. Create a PKCE verifier and challenge</h3>
+                <pre><code>const crypto = window.crypto;
+
+function base64UrlEncode(buffer) {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+const verifierBytes = new Uint8Array(32);
+crypto.getRandomValues(verifierBytes);
+
+const codeVerifier = base64UrlEncode(verifierBytes);
+const challengeBytes = await crypto.subtle.digest(
+  "SHA-256",
+  new TextEncoder().encode(codeVerifier)
+);
+const codeChallenge = base64UrlEncode(challengeBytes);</code></pre>
+
+                <h3>2. Redirect the browser to <code>/oauth2/authorize</code></h3>
+                <pre><code>GET http://localhost:8080/oauth2/authorize
+  ?response_type=code
+  &amp;client_id=admin-ui
+  &amp;redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Foauth%2Fcallback
+  &amp;scope=openid%20profile%20email
+  &amp;state={random-csrf-state}
+  &amp;nonce={random-oidc-nonce}
+  &amp;code_challenge={codeChallenge}
+  &amp;code_challenge_method=S256</code></pre>
+
+                <div class="note">
+                    If the user does not have a Spring Security web session, IAM Server redirects to
+                    <code>/login</code>. After a successful login, Spring Security resumes the saved authorization
+                    request.
+                </div>
+
+                <h3>3. Handle the callback</h3>
+                <pre><code>http://localhost:3000/oauth/callback?code={authorization-code}&amp;state={random-csrf-state}</code></pre>
+                <p>
+                    Verify that the returned <code>state</code> equals the state value stored before redirecting.
+                    Then exchange the authorization code using the same <code>code_verifier</code>.
+                </p>
+
+                <h3>4. Exchange the code for tokens</h3>
+                <pre><code>curl -X POST http://localhost:8080/oauth2/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=authorization_code" \
+  -d "client_id=admin-ui" \
+  -d "redirect_uri=http://localhost:3000/oauth/callback" \
+  -d "code={authorization-code}" \
+  -d "code_verifier={original-code-verifier}"</code></pre>
+
+                <h3>5. Expected token response</h3>
+                <pre><code>{
+  "access_token": "eyJ...",
+  "scope": "openid profile email",
+  "id_token": "eyJ...",
+  "token_type": "Bearer",
+  "expires_in": 300
+}</code></pre>
+            </section>
+
+            <section id="tokens" class="doc-section">
+                <p class="eyebrow">Token Usage</p>
+                <h2>Validate and use tokens</h2>
+
+                <h3>Discover server metadata</h3>
+                <pre><code>curl http://localhost:8080/.well-known/openid-configuration</code></pre>
+
+                <h3>Fetch signing keys</h3>
+                <pre><code>curl http://localhost:8080/oauth2/jwks</code></pre>
+
+                <h3>Call UserInfo</h3>
+                <pre><code>curl http://localhost:8080/userinfo \
+  -H "Authorization: Bearer {oidc-access-token}"</code></pre>
+
+                <div class="cards two-col">
+                    <article class="info-card compact">
+                        <h3>ID token validation</h3>
+                        <ul>
+                            <li>Validate the RSA signature using <code>/oauth2/jwks</code>.</li>
+                            <li>Validate <code>iss</code> against the configured issuer.</li>
+                            <li>Validate expiration and issued-at times.</li>
+                            <li>Validate <code>nonce</code> if one was sent in the authorize request.</li>
+                        </ul>
+                    </article>
+                    <article class="info-card compact">
+                        <h3>Access token usage</h3>
+                        <ul>
+                            <li>Send as <code>Authorization: Bearer {token}</code>.</li>
+                            <li>Use OIDC access tokens with OIDC resource endpoints such as <code>/userinfo</code>.</li>
+                            <li>Use the JSON API token only with this server's protected REST endpoints.</li>
+                        </ul>
+                    </article>
+                </div>
+            </section>
+
+            <section id="api" class="doc-section">
+                <p class="eyebrow">JSON API</p>
+                <h2>Server-owned JWT login API</h2>
+                <p>
+                    These endpoints are separate from OAuth2/OIDC. They authenticate directly with email/password and
+                    issue this server's own HS256 API access token plus an HTTP-only refresh cookie.
+                </p>
+
+                <div class="endpoint-list">
+                    <div><code>POST /auth/login</code><span>Authenticate with JSON email/password credentials.</span></div>
+                    <div><code>POST /auth/refresh</code><span>Rotate the refresh token cookie and issue a new API access token.</span></div>
+                    <div><code>GET /auth/me</code><span>Return the current API user from the bearer token.</span></div>
+                    <div><code>POST /auth/logout</code><span>Invalidate the current refresh token cookie.</span></div>
+                </div>
+
+                <h3>Login</h3>
+                <pre><code>curl -X POST http://localhost:8080/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "user-password"
+  }'</code></pre>
+
+                <h3>Login response</h3>
+                <pre><code>HTTP/1.1 200 OK
+Set-Cookie: refresh_token=...; Path=/auth; HttpOnly; Secure; SameSite=Lax
+
+{
+  "accessToken": "eyJ...",
+  "accessTokenExpiresAt": "2026-06-17T15:00:00Z"
+}</code></pre>
+
+                <h3>Refresh</h3>
+                <pre><code>curl -X POST http://localhost:8080/auth/refresh \
+  -b "refresh_token={refresh-token-cookie}"</code></pre>
+
+                <h3>Current user</h3>
+                <pre><code>curl http://localhost:8080/auth/me \
+  -H "Authorization: Bearer {api-access-token}"</code></pre>
+
+                <h3>Logout</h3>
+                <pre><code>curl -X POST http://localhost:8080/auth/logout \
+  -b "refresh_token={refresh-token-cookie}"</code></pre>
+            </section>
+
+            <section id="errors" class="doc-section">
+                <p class="eyebrow">Errors</p>
+                <h2>Common failure modes</h2>
+                <div class="endpoint-list">
+                    <div>
+                        <code>invalid_client</code>
+                        <span>Wrong <code>client_id</code>, unsupported client authentication, or missing client registration.</span>
+                    </div>
+                    <div>
+                        <code>invalid_grant</code>
+                        <span>Authorization code expired, already used, or does not match the PKCE verifier.</span>
+                    </div>
+                    <div>
+                        <code>invalid_redirect_uri</code>
+                        <span>The redirect URI does not exactly match the registered URI.</span>
+                    </div>
+                    <div>
+                        <code>403 on POST /login</code>
+                        <span>Missing or stale Spring Security CSRF token on the login form.</span>
+                    </div>
+                    <div>
+                        <code>401 from /auth/*</code>
+                        <span>Invalid API credentials, invalid refresh token, or missing bearer token.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section id="local-dev" class="doc-section">
+                <p class="eyebrow">Local Development</p>
+                <h2>Run locally</h2>
+                <ol class="steps">
+                    <li>Start Postgres with <code>docker compose up -d postgres</code>.</li>
+                    <li>Generate local OAuth RSA keys at <code>/tmp/iam-oauth-private.pem</code> and <code>/tmp/iam-oauth-public.pem</code>.</li>
+                    <li>Run the app with <code>./scripts/dev-run</code>.</li>
+                    <li>Open <code>http://localhost:8080/docs</code> for this page.</li>
+                    <li>Use an active seeded or created user account to complete the browser login step.</li>
+                </ol>
+            </section>
+        </div>
+    </main>
+</body>
+</html>
