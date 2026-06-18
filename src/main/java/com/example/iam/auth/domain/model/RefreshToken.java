@@ -71,7 +71,18 @@ public class RefreshToken {
     }
 
     public static RefreshToken issue(User user, String tokenHash, String userAgent, Instant now, Instant expiresAt) {
-        return new RefreshToken(user, tokenHash, UUID.randomUUID(), userAgent, now, expiresAt);
+        return issueInFamily(user, tokenHash, UUID.randomUUID(), userAgent, now, expiresAt);
+    }
+
+    public static RefreshToken issueInFamily(
+            User user,
+            String tokenHash,
+            UUID tokenFamilyId,
+            String userAgent,
+            Instant now,
+            Instant expiresAt
+    ) {
+        return new RefreshToken(user, tokenHash, tokenFamilyId, userAgent, now, expiresAt);
     }
 
     public boolean isActiveAt(Instant now) {

@@ -28,4 +28,9 @@ public class JpaRefreshTokenPersistenceAdapter implements RefreshTokenPersistenc
     public List<RefreshToken> findAllByTokenFamilyId(UUID tokenFamilyId) {
         return repository.findAllByTokenFamilyId(tokenFamilyId);
     }
+
+    @Override
+    public List<RefreshToken> findAllByTokenFamilyIdForUpdate(UUID tokenFamilyId) {
+        return repository.findAllByTokenFamilyIdOrderByIdAsc(tokenFamilyId);
+    }
 }

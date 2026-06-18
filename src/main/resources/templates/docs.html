@@ -319,8 +319,7 @@ Set-Cookie: refresh_token=...; Path=/auth; HttpOnly; Secure; SameSite=Lax
                 <h2>Run locally</h2>
                 <ol class="steps">
                     <li>Start Postgres with <code>docker compose up -d postgres</code>.</li>
-                    <li>Generate local OAuth RSA keys at <code>/tmp/iam-oauth-private.pem</code> and <code>/tmp/iam-oauth-public.pem</code>.</li>
-                    <li>Run the app with <code>./scripts/dev-run</code>.</li>
+                    <li>Run the app with <code>./scripts/dev-run</code>; it creates persistent development OAuth RSA keys under <code>secrets/</code> when needed.</li>
                     <li>Open <code>http://localhost:8080/docs</code> for this page.</li>
                     <li>Use an active seeded or created user account to complete the browser login step.</li>
                 </ol>

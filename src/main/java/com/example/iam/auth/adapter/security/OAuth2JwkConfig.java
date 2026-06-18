@@ -22,7 +22,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.util.UUID;
 
 @Configuration
 public class OAuth2JwkConfig {
@@ -36,7 +35,8 @@ public class OAuth2JwkConfig {
             @Value("${app.oauth2.jwk.private-key}") String privateKeyPem,
             @Value("${app.oauth2.jwk.private-key-path}") String privateKeyPath,
             @Value("${app.oauth2.jwk.public-key}") String publicKeyPem,
-            @Value("${app.oauth2.jwk.public-key-path}") String publicKeyPath
+            @Value("${app.oauth2.jwk.public-key-path}") String publicKeyPath,
+            @Value("${app.oauth2.jwk.key-id}") String keyId
     ) {
         RSAPrivateKey privateKey = parsePrivateKey(requiredPem(
                 keyMaterial(privateKeyPem, privateKeyPath),
@@ -49,7 +49,7 @@ public class OAuth2JwkConfig {
 
         RSAKey rsaKey = new RSAKey.Builder(publicKey)
                 .privateKey(privateKey)
-                .keyID(UUID.randomUUID().toString())
+                .keyID(keyId)
                 .build();
 
         return new ImmutableJWKSet<>(new JWKSet(rsaKey));

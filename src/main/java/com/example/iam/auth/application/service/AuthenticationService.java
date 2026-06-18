@@ -5,6 +5,7 @@ import com.example.iam.account.application.port.out.UserRolePersistencePort;
 import com.example.iam.account.domain.model.User;
 import com.example.iam.auth.adapter.security.JwtTokenIssuer;
 import com.example.iam.auth.application.exception.InvalidCredentialsException;
+import com.example.iam.auth.application.exception.InvalidRefreshTokenException;
 import com.example.iam.auth.application.port.out.AuthEventPersistencePort;
 import com.example.iam.auth.application.port.out.PasswordVerifier;
 import com.example.iam.auth.domain.model.AuthEvent;
@@ -51,7 +52,7 @@ public class AuthenticationService {
         return new AuthenticationResult(accessToken.token(), accessToken.expiresAt(), refreshToken.token(), refreshToken.expiresAt());
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = InvalidRefreshTokenException.class)
     public AuthenticationResult refreshAccessToken(String rawRefreshToken, String userAgent) {
         RefreshTokenService.RotatedRefreshToken rotatedRefreshToken = refreshTokenService.rotateRefreshToken(
                 rawRefreshToken,

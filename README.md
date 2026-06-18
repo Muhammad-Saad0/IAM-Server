@@ -8,23 +8,15 @@ Start the local PostgreSQL database:
 docker compose up -d
 ```
 
-Generate local OAuth/OIDC RSA keys. These are development keys only and should
-not be committed:
-
-```bash
-openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/iam-oauth-private.pem
-openssl rsa -pubout -in /tmp/iam-oauth-private.pem -out /tmp/iam-oauth-public.pem
-```
-
 Create a local `.env` file:
 
 ```bash
 OAUTH2_ISSUER=http://localhost:8080
-OAUTH2_JWK_PRIVATE_KEY="$(cat /tmp/iam-oauth-private.pem)"
-OAUTH2_JWK_PUBLIC_KEY="$(cat /tmp/iam-oauth-public.pem)"
 ```
 
-Run the Spring Boot app locally. The script loads `.env` and then starts the app:
+Run the Spring Boot app locally. The script loads `.env`, creates development-only
+OAuth RSA keys under `secrets/` when they do not exist, and reuses those keys on
+subsequent runs:
 
 ```bash
 ./scripts/dev-run

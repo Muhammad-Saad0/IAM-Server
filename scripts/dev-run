@@ -1,11 +1,47 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ -f .env ]]; then
+readonly REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly PRIVATE_KEY_PATH="$REPO_ROOT/secrets/iam-oauth-private.pem"
+readonly PUBLIC_KEY_PATH="$REPO_ROOT/secrets/iam-oauth-public.pem"
+
+cd "$REPO_ROOT"
+
+if [[ -f "$REPO_ROOT/.env" ]]; then
     set -a
     # shellcheck disable=SC1091
-    source .env
+    source "$REPO_ROOT/.env"
     set +a
 fi
+
+mkdir -p "$REPO_ROOT/secrets"
+
+private_key_generated=false
+if [[ ! -f "$PRIVATE_KEY_PATH" ]]; then
+    echo "Generating persistent development OAuth RSA private key..."
+    (
+        umask 077
+        openssl genpkey \
+            -algorithm RSA \
+            -pkeyopt rsa_keygen_bits:2048 \
+            -out "$PRIVATE_KEY_PATH"
+    )
+    private_key_generated=true
+fi
+
+if [[ ! -f "$PUBLIC_KEY_PATH" || "$private_key_generated" == true ]]; then
+    echo "Generating development OAuth RSA public key..."
+    openssl pkey \
+        -pubout \
+        -in "$PRIVATE_KEY_PATH" \
+        -out "$PUBLIC_KEY_PATH"
+fi
+
+chmod 600 "$PRIVATE_KEY_PATH"
+chmod 644 "$PUBLIC_KEY_PATH"
+
+unset OAUTH2_JWK_PRIVATE_KEY OAUTH2_JWK_PUBLIC_KEY
+export OAUTH2_JWK_PRIVATE_KEY_PATH="$PRIVATE_KEY_PATH"
+export OAUTH2_JWK_PUBLIC_KEY_PATH="$PUBLIC_KEY_PATH"
 
 ./mvnw spring-boot:run

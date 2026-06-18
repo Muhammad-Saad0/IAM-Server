@@ -12,4 +12,6 @@ public interface RefreshTokenPersistencePort {
     Optional<RefreshToken> findByTokenHash(String tokenHash);
 
     List<RefreshToken> findAllByTokenFamilyId(UUID tokenFamilyId);
+
+    List<RefreshToken> findAllByTokenFamilyIdForUpdate(UUID tokenFamilyId);
 }
