@@ -208,11 +208,13 @@ pre code {
 
 .docs-content {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 28px;
   min-width: 0;
 }
 
 .doc-section {
+  min-width: 0;
   padding: 34px;
   border: 1px solid #dce3ee;
   border-radius: 8px;
@@ -281,6 +283,9 @@ pre code {
 }
 
 .table-wrap {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
   margin-top: 20px;
   border: 1px solid #dce3ee;
@@ -336,6 +341,7 @@ tr:last-child td {
 .endpoint-list code {
   color: #164e63;
   font-weight: 800;
+  overflow-wrap: anywhere;
 }
 
 .endpoint-list span {
@@ -383,6 +389,7 @@ tr:last-child td {
   }
 
   .nav-links {
+    width: 100%;
     justify-content: flex-start;
   }
 
