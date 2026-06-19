@@ -203,7 +203,7 @@ public class SecurityConfig {
     @Order(3)
     public SecurityFilterChain loginSecurityFilterChain(HttpSecurity http) throws Exception {
         return http
-                .securityMatcher("/login", "/error", "/login-assets/**", "/docs", "/docs-assets/**")
+                .securityMatcher("/login", "/error", "/login-assets/**")
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
                 .formLogin(form -> form.loginPage("/login"))
                 .build();
