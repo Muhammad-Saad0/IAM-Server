@@ -33,6 +33,7 @@ import org.springframework.security.web.authentication.LoginUrlAuthenticationEnt
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.CorsUtils;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.ArrayList;
@@ -54,13 +55,34 @@ public class SecurityConfig {
     }
 
     @Bean
+    @Order(0)
+    public SecurityFilterChain authorizationServerPreflightSecurityFilterChain(
+            HttpSecurity http,
+            @Qualifier("authorizationServerCorsConfigurationSource")
+            CorsConfigurationSource authorizationServerCorsConfigurationSource
+    ) throws Exception {
+        return http
+                .securityMatcher(request -> CorsUtils.isPreFlightRequest(request)
+                        && isAuthorizationServerPath(request.getRequestURI()))
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(authorizationServerCorsConfigurationSource))
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .build();
+    }
+
+    @Bean
     @Order(1)
-    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain authorizationServerSecurityFilterChain(
+            HttpSecurity http,
+            @Qualifier("authorizationServerCorsConfigurationSource")
+            CorsConfigurationSource authorizationServerCorsConfigurationSource
+    ) throws Exception {
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
                 OAuth2AuthorizationServerConfigurer.authorizationServer();
 
         return http
                 .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
+                .cors(cors -> cors.configurationSource(authorizationServerCorsConfigurationSource))
                 .with(authorizationServerConfigurer, configurer -> configurer.oidc(Customizer.withDefaults()))
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
                 .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(
@@ -77,6 +99,7 @@ public class SecurityConfig {
             JwtAuthenticationConverter managementJwtAuthenticationConverter,
             ManagementAuthenticationEntryPoint managementAuthenticationEntryPoint,
             ManagementAccessDeniedHandler managementAccessDeniedHandler,
+            @Qualifier("managementCorsConfigurationSource")
             CorsConfigurationSource managementCorsConfigurationSource
     ) throws Exception {
         return http
@@ -106,6 +129,13 @@ public class SecurityConfig {
                 .build();
     }
 
+    private static boolean isAuthorizationServerPath(String path) {
+        return path.startsWith("/.well-known/")
+                || path.startsWith("/oauth2/")
+                || path.startsWith("/connect/")
+                || path.equals("/userinfo");
+    }
+
     @Bean("managementJwtDecoder")
     JwtDecoder managementJwtDecoder(
             @Qualifier("authorizationServerRsaKey") RSAKey rsaKey,
@@ -128,6 +158,31 @@ public class SecurityConfig {
             return authorities;
         });
         return authenticationConverter;
+    }
+
+    @Bean
+    CorsConfigurationSource authorizationServerCorsConfigurationSource(
+            @Value("${app.management.cors.allowed-origins}") List<String> allowedOrigins
+    ) {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(allowedOrigins);
+        configuration.setAllowedMethods(List.of(
+                HttpMethod.GET.name(),
+                HttpMethod.POST.name(),
+                HttpMethod.OPTIONS.name()
+        ));
+        configuration.setAllowedHeaders(List.of(
+                HttpHeaders.ACCEPT,
+                HttpHeaders.AUTHORIZATION,
+                HttpHeaders.CONTENT_TYPE
+        ));
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/.well-known/**", configuration);
+        source.registerCorsConfiguration("/oauth2/**", configuration);
+        source.registerCorsConfiguration("/connect/**", configuration);
+        source.registerCorsConfiguration("/userinfo", configuration);
+        return source;
     }
 
     @Bean

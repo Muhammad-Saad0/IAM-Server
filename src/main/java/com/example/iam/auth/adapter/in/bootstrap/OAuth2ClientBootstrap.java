@@ -18,6 +18,12 @@ import java.util.UUID;
 public class OAuth2ClientBootstrap implements ApplicationRunner {
     private static final String ADMIN_UI_CLIENT_ID = "admin-ui";
     private static final String MANAGEMENT_SCOPE = "iam.manage";
+    private static final String LOCAL_REDIRECT_URI = "http://localhost:3000/oauth/callback";
+    private static final String PRODUCTION_REDIRECT_URI =
+            "https://iam-server-fe.vercel.app/oauth/callback";
+    private static final String LOCAL_POST_LOGOUT_REDIRECT_URI = "http://localhost:3000/";
+    private static final String PRODUCTION_POST_LOGOUT_REDIRECT_URI =
+            "https://iam-server-fe.vercel.app/";
 
     private final RegisteredClientRepository registeredClientRepository;
     private final Clock clock;
@@ -32,7 +38,7 @@ public class OAuth2ClientBootstrap implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         RegisteredClient existingClient = registeredClientRepository.findByClientId(ADMIN_UI_CLIENT_ID);
         if (existingClient != null) {
-            addManagementScope(existingClient);
+            augmentAdminUiClient(existingClient);
             return;
         }
 
@@ -43,7 +49,10 @@ public class OAuth2ClientBootstrap implements ApplicationRunner {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 // IAM will only send authorization codes for this client back to registered callback URLs.
-                .redirectUri("http://localhost:3000/oauth/callback")
+                .redirectUri(LOCAL_REDIRECT_URI)
+                .redirectUri(PRODUCTION_REDIRECT_URI)
+                .postLogoutRedirectUri(LOCAL_POST_LOGOUT_REDIRECT_URI)
+                .postLogoutRedirectUri(PRODUCTION_POST_LOGOUT_REDIRECT_URI)
                 .scope(OidcScopes.OPENID)
                 .scope(OidcScopes.PROFILE)
                 .scope(OidcScopes.EMAIL)
@@ -57,13 +66,17 @@ public class OAuth2ClientBootstrap implements ApplicationRunner {
         registeredClientRepository.save(adminUiClient);
     }
 
-    private void addManagementScope(RegisteredClient existingClient) {
-        if (existingClient.getScopes().contains(MANAGEMENT_SCOPE)) {
-            return;
-        }
-
-        registeredClientRepository.save(RegisteredClient.from(existingClient)
+    private void augmentAdminUiClient(RegisteredClient existingClient) {
+        RegisteredClient augmentedClient = RegisteredClient.from(existingClient)
+                .redirectUri(LOCAL_REDIRECT_URI)
+                .redirectUri(PRODUCTION_REDIRECT_URI)
+                .postLogoutRedirectUri(LOCAL_POST_LOGOUT_REDIRECT_URI)
+                .postLogoutRedirectUri(PRODUCTION_POST_LOGOUT_REDIRECT_URI)
                 .scope(MANAGEMENT_SCOPE)
-                .build());
+                .build();
+
+        if (!augmentedClient.equals(existingClient)) {
+            registeredClientRepository.save(augmentedClient);
+        }
     }
 }

@@ -46,7 +46,15 @@ class OAuth2ClientBootstrapTest {
         assertThat(repository.saved.getId()).isEqualTo(existing.getId());
         assertThat(repository.saved.getClientIdIssuedAt()).isEqualTo(issuedAt);
         assertThat(repository.saved.getClientName()).isEqualTo("Existing Admin UI");
-        assertThat(repository.saved.getRedirectUris()).containsExactly("https://admin.example.com/callback");
+        assertThat(repository.saved.getRedirectUris()).containsExactlyInAnyOrder(
+                "https://admin.example.com/callback",
+                "http://localhost:3000/oauth/callback",
+                "https://iam-server-fe.vercel.app/oauth/callback"
+        );
+        assertThat(repository.saved.getPostLogoutRedirectUris()).containsExactlyInAnyOrder(
+                "http://localhost:3000/",
+                "https://iam-server-fe.vercel.app/"
+        );
         assertThat(repository.saved.getScopes()).containsExactlyInAnyOrder(
                 OidcScopes.OPENID,
                 OidcScopes.EMAIL,
