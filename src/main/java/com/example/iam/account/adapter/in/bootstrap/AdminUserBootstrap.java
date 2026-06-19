@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Locale;
 
 @Component
 public class AdminUserBootstrap implements ApplicationRunner {
@@ -55,7 +56,8 @@ public class AdminUserBootstrap implements ApplicationRunner {
             return;
         }
 
-        if (userPersistencePort.findByEmail(adminEmail).isPresent()) {
+        String normalizedEmail = adminEmail.trim().toLowerCase(Locale.ROOT);
+        if (userPersistencePort.findByEmail(normalizedEmail).isPresent()) {
             return;
         }
 
@@ -63,7 +65,11 @@ public class AdminUserBootstrap implements ApplicationRunner {
         Role adminRole = rolePersistencePort.findByName(ADMIN_ROLE)
                 .orElseThrow(() -> new IllegalStateException("Required role is missing: " + ADMIN_ROLE));
 
-        User adminUser = userPersistencePort.save(User.register(adminEmail, passwordHasher.hash(adminPassword), now));
+        User adminUser = userPersistencePort.save(User.register(
+                normalizedEmail,
+                passwordHasher.hash(adminPassword),
+                now
+        ));
         userRolePersistencePort.save(new UserRole(adminUser, adminRole, now));
     }
 }

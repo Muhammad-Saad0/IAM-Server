@@ -17,6 +17,7 @@ import java.util.UUID;
 @Component
 public class OAuth2ClientBootstrap implements ApplicationRunner {
     private static final String ADMIN_UI_CLIENT_ID = "admin-ui";
+    private static final String MANAGEMENT_SCOPE = "iam.manage";
 
     private final RegisteredClientRepository registeredClientRepository;
     private final Clock clock;
@@ -29,7 +30,9 @@ public class OAuth2ClientBootstrap implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        if (registeredClientRepository.findByClientId(ADMIN_UI_CLIENT_ID) != null) {
+        RegisteredClient existingClient = registeredClientRepository.findByClientId(ADMIN_UI_CLIENT_ID);
+        if (existingClient != null) {
+            addManagementScope(existingClient);
             return;
         }
 
@@ -44,6 +47,7 @@ public class OAuth2ClientBootstrap implements ApplicationRunner {
                 .scope(OidcScopes.OPENID)
                 .scope(OidcScopes.PROFILE)
                 .scope(OidcScopes.EMAIL)
+                .scope(MANAGEMENT_SCOPE)
                 .clientSettings(ClientSettings.builder()
                         .requireProofKey(true)
                         .requireAuthorizationConsent(false)
@@ -51,5 +55,15 @@ public class OAuth2ClientBootstrap implements ApplicationRunner {
                 .build();
 
         registeredClientRepository.save(adminUiClient);
+    }
+
+    private void addManagementScope(RegisteredClient existingClient) {
+        if (existingClient.getScopes().contains(MANAGEMENT_SCOPE)) {
+            return;
+        }
+
+        registeredClientRepository.save(RegisteredClient.from(existingClient)
+                .scope(MANAGEMENT_SCOPE)
+                .build());
     }
 }

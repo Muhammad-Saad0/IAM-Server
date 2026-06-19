@@ -16,11 +16,11 @@ public class JpaUserPersistenceAdapter implements UserPersistencePort {
 
     @Override
     public Optional<User> findByEmail(String email) {
-        return repository.findByEmail(email);
+        return repository.findByEmailIgnoreCase(email);
     }
 
     @Override
     public User save(User user) {
-        return repository.save(user);
+        return repository.saveAndFlush(user);
     }
 }

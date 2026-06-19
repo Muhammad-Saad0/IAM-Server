@@ -30,8 +30,8 @@ public class OAuth2JwkConfig {
      * OAuth/OIDC tokens. The private key stays in configuration, while the public
      * key is exposed later through the standard JWKS endpoint for token validation.
      */
-    @Bean
-    JWKSource<SecurityContext> jwkSource(
+    @Bean("authorizationServerRsaKey")
+    RSAKey authorizationServerRsaKey(
             @Value("${app.oauth2.jwk.private-key}") String privateKeyPem,
             @Value("${app.oauth2.jwk.private-key-path}") String privateKeyPath,
             @Value("${app.oauth2.jwk.public-key}") String publicKeyPem,
@@ -52,7 +52,12 @@ public class OAuth2JwkConfig {
                 .keyID(keyId)
                 .build();
 
-        return new ImmutableJWKSet<>(new JWKSet(rsaKey));
+        return rsaKey;
+    }
+
+    @Bean
+    JWKSource<SecurityContext> jwkSource(RSAKey authorizationServerRsaKey) {
+        return new ImmutableJWKSet<>(new JWKSet(authorizationServerRsaKey));
     }
 
     @Bean("authorizationServerJwtDecoder")
